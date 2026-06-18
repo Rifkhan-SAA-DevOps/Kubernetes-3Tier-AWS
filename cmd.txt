@@ -1,0 +1,157 @@
+winget install Kubernetes.kubectl 
+kubectl version --client
+winget install Kubernetes.minikube
+minikube version
+
+kubectl get nodes
+kubectl get pods -A
+
+
+project-root/
+│
+├── frontend/
+│
+├── backend/
+│
+├── k8s/
+│   │
+│   ├── namespace.yaml
+│   │
+│   ├── mysql/
+│   │   ├── mysql-secret.yaml
+│   │   ├── mysql-pv.yaml
+│   │   ├── mysql-pvc.yaml
+│   │   ├── mysql-deployment.yaml
+│   │   └── mysql-service.yaml
+│   │
+│   ├── backend/
+│   │   ├── backend-configmap.yaml
+│   │   ├── backend-secret.yaml
+│   │   ├── backend-deployment.yaml
+│   │   └── backend-service.yaml
+│   │
+│   ├── frontend/
+│   │   ├── frontend-deployment.yaml
+│   │   └── frontend-service.yaml
+│   │
+│   └── ingress/
+│       └── ingress.yaml
+│
+└── .github/
+    └── workflows/
+
+
+1.  kubectl apply -f k8s/namespace.yaml
+    kubectl get ns
+
+2. k8s/mysql/mysql-secret.yaml
+
+    [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("rifkhansaa"))
+
+    kubectl apply -f k8s/mysql/mysql-secret.yaml
+
+3. Persistent Volume (Storage)
+
+    # k8s/mysql/mysql-pv.yaml
+    kubectl apply -f k8s/mysql/mysql-pv.yaml
+    kubectl get pv
+
+   PersistentVolumeClaim (Request Storage)
+    # k8s/mysql/mysql-pvc.yaml
+    kubectl apply -f k8s/mysql/mysql-pvc.yaml
+    kubectl get pvc -n three-tier-app
+
+   MySQL Deployment
+    kubectl apply -f k8s/mysql/mysql-deployment.yaml    
+    kubectl get svc -n three-tier-app
+    kubectl get pods -n three-tier-app
+
+    kubectl get all -n three-tier-app
+    kubectl describe pod mysql-5d6885f8f9-svdr9 -n three-tier-app
+
+
+    kubectl get pods -n three-tier-app
+    kubectl get deployments -n three-tier-app
+    kubectl get rs -n three-tier-app
+
+
+
+4. Backend in Kubernetes (Real 3-Tier Logic)
+    backend-secret.yaml
+    kubectl apply -f k8s/backend/backend-secret.yaml
+
+    Create Docker File For Backend
+    minikube docker-env | Invoke-Expression  => point 
+    docker build -t backend:v1 .
+
+    backend-deployment.yaml
+    kubectl apply -f k8s/backend/backend-deployment.yaml
+
+    backend-service.yaml
+    kubectl apply -f k8s/backend/backend-service.yaml
+
+    kubectl apply -f k8s/backend/
+
+    kubectl delete deployment backend -n three-tier-app
+
+    kubectl describe pod backend-79b4d87dd5-mksv8 -n three-tier-app
+
+    kubectl rollout restart deployment backend -n three-tier-app
+    kubectl rollout restart deployment frontend -n three-tier-app
+
+
+
+5. Frontend (React) in Kubernetes
+    Create Docker File For Frontend
+    minikube docker-env | Invoke-Expression  => point 
+    docker build -t frontend:v1 .
+
+    frontend-deployment.yaml
+    kubectl apply -f k8s/frontend/frontend-deployment.yaml
+
+    frontend-service.yaml
+    kubectl apply -f k8s/frontend/frontend-service.yaml
+
+
+    kubectl get svc -n three-tier-app
+
+    minikube service frontend-service -n three-tier-app  =>  to open app
+
+    ┌────────────────┬──────────────────┬─────────────┬───────────────────────────┐
+    │   NAMESPACE    │       NAME       │ TARGET PORT │            URL            │
+    ├────────────────┼──────────────────┼─────────────┼───────────────────────────┤
+    │ three-tier-app │ frontend-service │ 80          │ http://192.168.49.2:31449 │
+    └────────────────┴──────────────────┴─────────────┴───────────────────────────┘
+
+
+    kubectl scale deployment backend --replicas=0 -n three-tier-app
+    kubectl scale deployment frontend --replicas=0 -n three-tier-app
+    kubectl scale deployment mysql --replicas=0 -n three-tier-app
+
+    kubectl delete deployment backend -n three-tier-app
+    kubectl delete deployment frontend -n three-tier-app
+    kubectl delete deployment mysql -n three-tier-app
+
+    minikube stop
+    minikube start
+
+6. Ingress (Real Production Networking)
+    minikube addons enable ingress => Enable Ingress (Minikube)
+    kubectl get pods -n ingress-nginx  => ingress-nginx-controller-596f8778bc-8ssfz   1/1     Running     0          2m11s
+
+    kubectl apply -f k8s/ingress/ingress.yaml
+    kubectl get ingress -n three-tier-app
+
+
+                  Internet / Browser
+                           |
+                  Kubernetes Ingress
+                           |
+            ---------------------------------
+            |                               |
+        app.local                      api.local
+            |                               |
+        frontend-service              backend-service
+        (port 80)                     (port 5000)
+            |                               |
+        React/Vite UI               Node.js API

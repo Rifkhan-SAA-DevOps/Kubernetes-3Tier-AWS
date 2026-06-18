@@ -1,0 +1,12 @@
+# k8s/backend/backend-configmap.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: three-tier-app
+
+data:
+  DB_HOST: mysql-service
+  DB_NAME: library_db
+  DB_PORT: "3306"

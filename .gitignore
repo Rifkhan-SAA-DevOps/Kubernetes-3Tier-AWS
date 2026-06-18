@@ -1,0 +1,118 @@
+############################################
+# 🔵 Node.js (Backend / API)
+############################################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+dist/
+build/
+coverage/
+
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+backend-mongodb
+
+############################################
+# 🔵 React / Vite (Frontend)
+############################################
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+frontend/.env
+frontend/.env.local
+
+############################################
+# 🔵 Logs
+############################################
+logs/
+*.log
+
+############################################
+# 🔵 OS Files
+############################################
+.DS_Store
+Thumbs.db
+
+############################################
+# 🔵 Docker
+############################################
+.dockerignore
+docker-compose.override.yml
+
+# Docker volumes / local data
+*.tar
+*.tar.gz
+
+############################################
+# 🔵 Kubernetes
+############################################
+*.kubeconfig
+.kube/
+*.kube/
+
+# Secrets (VERY IMPORTANT)
+k8s/secrets.yaml
+kubernetes/secrets.yaml
+
+############################################
+# 🔵 Terraform (AWS / Infra)
+############################################
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+############################################
+# 🔵 CI/CD (GitHub Actions, Jenkins)
+############################################
+.github/workflows/*.secrets
+jenkins/credentials.xml
+
+############################################
+# 🔵 IDE / Editors
+############################################
+.vscode/
+.idea/
+*.swp
+*.swo
+
+############################################
+# 🔵 Testing / Coverage
+############################################
+coverage/
+.nyc_output/
+
+############################################
+# 🔵 Misc
+############################################
+*.pem
+*.key
+*.crt
+
+# Secrets files
+secrets.json
+.env.*
+
+############################################
+# 🔥 Extra Safety (Highly Recommended)
+############################################
+**/.DS_Store
+**/node_modules
+**/dist
+**/build
+**/.env
+**/.terraform
