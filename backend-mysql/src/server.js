@@ -25,11 +25,11 @@ app.use(express.json());
 
 
 // --- Health & readiness ---
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });
 
-app.get('/ready', async (req, res) => {
+app.get('/api/ready', async (req, res) => {
   try {
     await checkConnection();
     res.json({ ready: true, db: 'mysql' });

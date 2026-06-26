@@ -1,12 +1,12 @@
-# k8s/backend/backend-service.yaml
-
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend-service
+  name: backend-nodeport
   namespace: three-tier-app
 
 spec:
+  type: NodePort
+
   selector:
     app: backend
 
@@ -14,6 +14,5 @@ spec:
     - name: http
       protocol: TCP
       port: 5000
-      targetPort: 5000
-
-  type: ClusterIP
+      targetPort: 8080
+      nodePort: 30080

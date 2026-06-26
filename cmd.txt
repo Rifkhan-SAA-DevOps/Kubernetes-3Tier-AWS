@@ -132,10 +132,102 @@ project-root/
     kubectl delete deployment frontend -n three-tier-app
     kubectl delete deployment mysql -n three-tier-app
 
+    kubectl delete pvc mysql-pvc -n three-tier-app
+
+    kubectl run curl-test -n three-tier-app  --image=curlimages/curl:8.10.1 -it --rm --restart=Never -- sh => Test backend Service from inside the cluster
+    curl http://backend-service:5000
+
+    -----Create NodePort Service--------
+    kubectl apply -f backend-nodeport-service.yaml
+    minikube service backend-nodeport -n three-tier-app --url
+
+
+
     minikube stop
     minikube start
 
-6. Ingress (Real Production Networking)
+6. Real full-stack Kubernetes mini project
+
+    Frontend website
+        ↓
+    Frontend Service
+        ↓
+    Frontend Pod with Nginx
+        ↓
+    /api request
+        ↓
+    Backend Service
+        ↓
+    Backend Node.js API Pod
+
+
+
+    k8s-fullstack-demo/
+    │
+    ├── backend/
+    │   ├── package.json
+    │   ├── server.js
+    │   └── Dockerfile
+    │
+    ├── frontend/
+    │   ├── index.html
+    │   ├── nginx.conf
+    │   └── Dockerfile
+    │
+    └── k8s/
+        ├── namespace.yaml
+        ├── backend-deployment.yaml
+        ├── backend-service.yaml
+        ├── frontend-deployment.yaml
+        └── frontend-service.yaml
+
+
+    docker build -t k8s-three-tier-app:v1 ./backend
+    docker build -t k8s-three-tier-app:v1 ./frontend
+
+    --------Load images into minikube-----------
+        minikube image load k8s-backend-demo:v1
+        minikube image load k8s-frontend-demo:v1
+
+    imagePullPolicy: Never  =>  Do not pull this image from Docker Hub.
+                                Use the local image already loaded into minikube.
+
+
+    kubectl get all -n three-tier-app
+
+    kubectl run curl-test -n three-tier-app --image=curlimages/curl:8.10.1 -it --rm --restart=Never -- sh
+
+    curl http://backend-service:5000/api/health
+    curl http://backend-service:5000/api/products
+    exit
+
+
+    kubectl get endpoints mysql-service -n three-tier-app
+
+    kubectl rollout restart deployment/backend -n three-tier-app
+    kubectl run curl-test --rm -it --image=curlimages/curl -n three-tier-app -- sh
+    curl http://backend-service:5000/api/books
+
+    minikube service frontend-service -n three-tier-app
+
+    ---------enter db and data-----------
+    kubectl exec -it deployment/mysql -n three-tier-app -- sh
+    mysql -uroot -p"$MYSQL_ROOT_PASSWORD"
+
+
+    ------------------
+
+    minikube image build -t frontend-three-tier-app:v1 ./frontend => directly create image into minikube
+
+
+
+
+
+
+
+
+
+7. Ingress (Real Production Networking)
     minikube addons enable ingress => Enable Ingress (Minikube)
     kubectl get pods -n ingress-nginx  => ingress-nginx-controller-596f8778bc-8ssfz   1/1     Running     0          2m11s
 
@@ -155,3 +247,119 @@ project-root/
         (port 80)                     (port 5000)
             |                               |
         React/Vite UI               Node.js API
+
+
+
+
+8. Kubernetes on AWS EC2 (kubeadm Cluster)
+
+        🏗️ Target Architecture
+
+                        Internet
+                            ↓
+                    Ingress Controller
+                            ↓
+                ┌────────────┴────────────┐
+                ↓                         ↓
+            Frontend Pod               Backend Pod
+                                          ↓
+                                      MySQL Pod
+
+    Step 1 — Create EC2 Instances
+        📌 Instance setup
+                Node	    Name	        Type
+                Master	    k8s-master	    t2.medium
+                Worker 1	k8s-worker-1	t2.medium
+                Worker 2	k8s-worker-2	t2.medium
+
+        📌 Security Group (VERY IMPORTANT)
+            Open these ports:
+                22   → SSH
+                6443 → Kubernetes API server
+                10250 → kubelet
+                30000-32767 → NodePort
+
+                        Internet
+                            |
+                        (22 SSH)
+                            |
+                        EC2 Nodes (K8s)
+                             |
+                    -----------------------
+                    |        |            |
+                  6443     10250      30000-32767
+               API Server  kubelet   NodePort apps
+
+
+    🧠 Step 2 — Install Kubernetes (ALL nodes)
+        Run on ALL EC2 machines
+            1. Update system
+                sudo apt update -y
+                sudo apt upgrade -y
+
+            2. Install Docker
+                sudo apt install docker.io -y
+                sudo systemctl enable docker
+                sudo systemctl start docker
+
+            3. Install kubeadm, kubelet, kubectl
+                sudo apt install -y apt-transport-https curl
+
+                curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+
+                echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+                sudo apt update -y
+
+                sudo apt install -y kubelet kubeadm kubectl
+                sudo apt-mark hold kubelet kubeadm kubectl
+            
+    🧠 Step 3 — Initialize Master Node
+        Run ONLY on master:
+            sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+        
+        Configure kubectl
+            mkdir -p $HOME/.kube
+            sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+            sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+    🧠 Step 4 — Install Network Plugin (Flannel)
+        kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+    🧠 Step 5 — Join Worker Nodes
+        After init, master gives a command like:
+
+            kubeadm join <master-ip>:6443 --token xxxx --discovery-token-ca-cert-hash sha256:xxxx
+
+        Run it on BOTH workers.
+
+    🧠 Step 6 — Verify Cluster
+        On master:
+            kubectl get nodes
+        Expected:
+            k8s-master     Ready
+            k8s-worker-1   Ready
+            k8s-worker-2   Ready
+    
+    🚀 Step 7 — Deploy Your 3-Tier App (same YAML)
+        Now copy your local Kubernetes manifests:
+
+            mysql/
+            backend/
+            frontend/
+            ingress/
+        
+        Run:
+            kubectl apply -f k8s/
+    
+    🌐 Step 8 — Expose Ingress on AWS
+
+        Replace Minikube ingress with:
+            AWS Security Group rules
+            Node Public IP
+            Ingress Controller (NGINX)
+
+        Then access:
+            http://<EC2-PUBLIC-IP>
+
+
