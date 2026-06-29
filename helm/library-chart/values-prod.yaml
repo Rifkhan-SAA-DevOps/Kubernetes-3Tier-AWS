@@ -1,0 +1,19 @@
+namespace:
+  name: library-prod
+
+backend:
+  replicas: 3
+  image:
+    tag: v1
+
+frontend:
+  replicas: 3
+  image:
+    tag: v1
+
+mysql:
+  storage:
+    size: 5Gi
+
+ingress:
+  host: library.local

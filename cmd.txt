@@ -198,7 +198,7 @@ project-root/
     kubectl run curl-test -n three-tier-app --image=curlimages/curl:8.10.1 -it --rm --restart=Never -- sh
 
     curl http://backend-service:5000/api/health
-    curl http://backend-service:5000/api/products
+    curl http://backend-service:5000/api/books
     exit
 
 
@@ -519,3 +519,68 @@ MySQL Service
 MySQL StatefulSet
   ↓
 PersistentVolumeClaim
+
+
+
+docker build -t rifkhan6526/library-backend:v1 ./backend
+docker build -t rifkhan6526/library-frontend:v1 ./frontend
+
+docker login
+
+docker push rifkhan6526/library-backend:v1
+docker push rifkhan6526/library-frontend:v1
+
+minikube addons enable ingress
+
+kubectl apply -f namespace.yaml
+kubectl apply -f mysql-secret.yaml
+kubectl apply -f mysql-statefulset.yaml
+kubectl apply -f backend-configmap.yaml
+kubectl apply -f backend-secret.yaml
+kubectl apply -f backend-deployment.yaml
+kubectl apply -f frontend-deployment.yaml
+kubectl apply -f frontend-service.yaml
+kubectl apply -f frontend-ingress.yaml
+
+kubectl get all -n library-app
+kubectl get pvc -n library-app
+kubectl get ingress -n library-app
+
+kubectl run curl-test -n library-app --image=curlimages/curl:8.10.1 -it --rm --restart=Never -- sh
+curl http://backend-service:5000/api/books
+curl http://backend-service:5000/api/auth/login
+
+kubectl logs frontend-78d4745767-krzk8 -n library-app --previous
+kubectl get pods -n library-app --show-labels
+
+
+kubectl rollout restart deployment/frontend -n library-app
+
+
+helm create library-chart
+Remove-Item -Recurse -Force .\library-chart\templates\*
+
+
+create helm files----------
+helm template library-app ./helm/library-chart
+helm lint ./helm/library-chart
+
+
+minikube addons enable ingress
+helm install library-dev ./helm/library-chart -f ./helm/library-chart/values-dev.yaml
+
+helm list -A
+kubectl get all -n library-dev
+kubectl get pvc -n library-dev
+kubectl get ingress -n library-dev
+
+
+kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80
+
+helm upgrade library-dev ./helm/library-chart -f ./helm/library-chart/values-dev.yaml --set backend.replicas=2
+
+
+helm upgrade library-dev ./helm/library-chart -f ./helm/library-chart/values-dev.yaml --set backend.replicas=2
+kubectl get pods -n library-dev
+
+helm history library-dev

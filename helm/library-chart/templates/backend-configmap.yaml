@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.global.appName }}
+    app.kubernetes.io/component: backend
+
+data:
+  PORT: {{ .Values.backend.config.port | quote }}
+  DB_HOST: {{ .Values.backend.config.dbHost | quote }}
+  DB_PORT: {{ .Values.backend.config.dbPort | quote }}
+  DB_NAME: {{ .Values.backend.config.dbName | quote }}
+  DB_USER: {{ .Values.backend.config.dbUser | quote }}
+  JWT_EXPIRES_IN: {{ .Values.backend.config.jwtExpiresIn | quote }}

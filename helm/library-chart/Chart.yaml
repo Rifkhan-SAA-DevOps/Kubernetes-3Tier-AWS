@@ -1,0 +1,6 @@
+apiVersion: v2
+name: library-chart
+description: Helm chart for Library Management System with React frontend, Express backend, and MySQL database
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

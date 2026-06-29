@@ -1,0 +1,102 @@
+namespace:
+  name: library-app
+
+global:
+  appName: library-management-system
+
+mysql:
+  name: mysql
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    name: mysql-service
+    headlessName: mysql-headless
+    port: 3306
+
+  auth:
+    rootPassword: "rifkhansaa"
+    database: "library_db"
+    username: "appuser"
+    password: "rifkhansaa"
+
+  storage:
+    size: 1Gi
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+backend:
+  name: backend
+  replicas: 2
+
+  image:
+    repository: rifkhan6526/library-backend
+    tag: v1
+    pullPolicy: IfNotPresent
+
+  service:
+    name: backend-service
+    type: ClusterIP
+    port: 5000
+    targetPort: 5000
+
+  config:
+    port: "5000"
+    dbHost: mysql-service
+    dbPort: "3306"
+    dbName: library_db
+    dbUser: appuser
+    jwtExpiresIn: "1d"
+
+  secret:
+    dbPassword: "rifkhansaa"
+    jwtSecret: "library-super-secret-jwt-key-2026"
+
+  probes:
+    enabled: true
+    path: /api/health
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+frontend:
+  name: frontend
+  replicas: 2
+
+  image:
+    repository: rifkhan6526/library-frontend
+    tag: v1
+    pullPolicy: IfNotPresent
+
+  service:
+    name: frontend-service
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
+
+ingress:
+  enabled: true
+  name: library-ingress
+  className: nginx
+  host: library.local

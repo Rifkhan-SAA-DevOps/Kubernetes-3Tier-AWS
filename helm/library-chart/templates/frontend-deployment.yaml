@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.frontend.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: {{ .Values.frontend.name }}
+    app.kubernetes.io/component: frontend
+
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+
+  selector:
+    matchLabels:
+      app: {{ .Values.frontend.name }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.frontend.name }}
+        app.kubernetes.io/component: frontend
+
+    spec:
+      containers:
+        - name: {{ .Values.frontend.name }}
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.service.targetPort }}
+
+          resources:
+{{ toYaml .Values.frontend.resources | indent 12 }}

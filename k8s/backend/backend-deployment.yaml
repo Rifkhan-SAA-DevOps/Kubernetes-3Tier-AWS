@@ -1,18 +1,14 @@
-# k8s/backend/backend-deployment.yaml
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
   namespace: library-app
+  labels:
+    app: backend
 
 spec:
-  replicas: 1
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
+  replicas: 2
+
   selector:
     matchLabels:
       app: backend
@@ -25,25 +21,24 @@ spec:
     spec:
       containers:
         - name: backend
-          image: backend-three-tier-app:v3
-          # image: backend-three-tier-app:v2
-          # image: backend-three-tier-app:v1
-          imagePullPolicy: Never
+          image: rifkhan6526/library-backend:v1
+          imagePullPolicy: IfNotPresent
+
           ports:
             - containerPort: 5000
 
           env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: PORT
+
             - name: DB_HOST
               valueFrom:
                 configMapKeyRef:
                   name: backend-config
                   key: DB_HOST
-
-            - name: DB_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: backend-config
-                  key: DB_NAME
 
             - name: DB_PORT
               valueFrom:
@@ -51,10 +46,16 @@ spec:
                   name: backend-config
                   key: DB_PORT
 
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: DB_NAME
+
             - name: DB_USER
               valueFrom:
-                secretKeyRef:
-                  name: backend-secret
+                configMapKeyRef:
+                  name: backend-config
                   key: DB_USER
 
             - name: DB_PASSWORD
@@ -62,36 +63,23 @@ spec:
                 secretKeyRef:
                   name: backend-secret
                   key: DB_PASSWORD
-          
-          startupProbe:
-            httpGet:
-              path: /api/live
-              port: 5000
-            initialDelaySeconds: 3
-            periodSeconds: 3
-            failureThreshold: 10
 
-          readinessProbe:
-            httpGet:
-              path: /api/ready
-              port: 5000
-            initialDelaySeconds: 2
-            periodSeconds: 5
-            failureThreshold: 3
-            successThreshold: 1
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: JWT_SECRET
 
-          livenessProbe:
-            httpGet:
-              path: /api/live
-              port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            failureThreshold: 3
-            
+            - name: JWT_EXPIRES_IN
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: JWT_EXPIRES_IN
+
           resources:
             requests:
-              cpu: "50m"
-              memory: "64Mi"
+              cpu: "100m"
+              memory: "128Mi"
             limits:
               cpu: "500m"
-              memory: "256Mi"
+              memory: "512Mi"

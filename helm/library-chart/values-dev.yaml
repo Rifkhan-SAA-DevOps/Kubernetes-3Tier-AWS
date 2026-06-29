@@ -1,0 +1,19 @@
+namespace:
+  name: library-dev
+
+backend:
+  replicas: 1
+  image:
+    tag: v1
+
+frontend:
+  replicas: 1
+  image:
+    tag: v1
+
+mysql:
+  storage:
+    size: 1Gi
+
+ingress:
+  host: library-dev.local
