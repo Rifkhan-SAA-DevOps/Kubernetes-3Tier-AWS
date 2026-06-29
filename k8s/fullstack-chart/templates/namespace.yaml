@@ -1,6 +1,5 @@
-# k8s/namespace.yaml
 
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: library-app
+  name: {{Values.namespace.name}}

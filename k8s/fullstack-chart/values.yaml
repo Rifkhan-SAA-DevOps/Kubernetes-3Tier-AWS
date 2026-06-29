@@ -1,0 +1,6 @@
+namespace:
+  name: three-tier-app
+
+frontend:
+  name:frontend
+  replicas

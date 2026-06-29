@@ -225,141 +225,297 @@ project-root/
 
 
 
+7. Rolling Updates and Rollbacks
+    Now you will learn how real companies deploy new versions without stopping the app.
+    Kubernetes Deployments support rolling updates, where old Pods are gradually replaced by new Pods so the application can remain available during the update.
+
+    minikube image load backend-three-tier-app:v2
+    minikube image ls | findstr three-tier-app
+    kubectl set image deployment/backend backend=backend-three-tier-app:v2 -n three-tier-app
+    kubectl rollout status deployment/backend -n three-tier-app
+    kubectl rollout history deployment/backend -n three-tier-app
+
+    kubectl set image deployment/backend backend=k8s-backend-demo:broken -n three-tier-app
 
 
-7. Ingress (Real Production Networking)
-    minikube addons enable ingress => Enable Ingress (Minikube)
-    kubectl get pods -n ingress-nginx  => ingress-nginx-controller-596f8778bc-8ssfz   1/1     Running     0          2m11s
-
-    kubectl apply -f k8s/ingress/ingress.yaml
-    kubectl get ingress -n three-tier-app
+    kubectl rollout status deployment/backend -n three-tier-app
+    kubectl rollout undo deployment/backend -n three-tier-app
 
 
-                  Internet / Browser
-                           |
-                  Kubernetes Ingress
-                           |
-            ---------------------------------
-            |                               |
-        app.local                      api.local
-            |                               |
-        frontend-service              backend-service
-        (port 80)                     (port 5000)
-            |                               |
-        React/Vite UI               Node.js API
+8. Kubernetes Health Checks: readinessProbe, livenessProbe, startupProbe
 
+    Probe	        Meaning	Kubernetes                  action
+    readinessProbe	Is this app ready for traffic?	    Remove Pod from Service traffic if failed
+    livenessProbe	Is this app still alive?	        Restart container if failed
+    startupProbe	Has this app started successfully?	Wait before running liveness/readiness checks
 
+    docker build -t backend-three-tier-app:v2 ./backend
+    minikube image load backend-three-tier-app:v2
+    minikube image ls | findstr backend-three-tier-app:v2
 
+    change deployment version image in the file
 
-8. Kubernetes on AWS EC2 (kubeadm Cluster)
+    kubectl set image deployment/backend backend=backend-three-tier-app:v2 -n three-tier-app
 
-        🏗️ Target Architecture
-
-                        Internet
-                            ↓
-                    Ingress Controller
-                            ↓
-                ┌────────────┴────────────┐
-                ↓                         ↓
-            Frontend Pod               Backend Pod
-                                          ↓
-                                      MySQL Pod
-
-    Step 1 — Create EC2 Instances
-        📌 Instance setup
-                Node	    Name	        Type
-                Master	    k8s-master	    t2.medium
-                Worker 1	k8s-worker-1	t2.medium
-                Worker 2	k8s-worker-2	t2.medium
-
-        📌 Security Group (VERY IMPORTANT)
-            Open these ports:
-                22   → SSH
-                6443 → Kubernetes API server
-                10250 → kubelet
-                30000-32767 → NodePort
-
-                        Internet
-                            |
-                        (22 SSH)
-                            |
-                        EC2 Nodes (K8s)
-                             |
-                    -----------------------
-                    |        |            |
-                  6443     10250      30000-32767
-               API Server  kubelet   NodePort apps
-
-
-    🧠 Step 2 — Install Kubernetes (ALL nodes)
-        Run on ALL EC2 machines
-            1. Update system
-                sudo apt update -y
-                sudo apt upgrade -y
-
-            2. Install Docker
-                sudo apt install docker.io -y
-                sudo systemctl enable docker
-                sudo systemctl start docker
-
-            3. Install kubeadm, kubelet, kubectl
-                sudo apt install -y apt-transport-https curl
-
-                curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-
-                echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-
-                sudo apt update -y
-
-                sudo apt install -y kubelet kubeadm kubectl
-                sudo apt-mark hold kubelet kubeadm kubectl
-            
-    🧠 Step 3 — Initialize Master Node
-        Run ONLY on master:
-            sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-        
-        Configure kubectl
-            mkdir -p $HOME/.kube
-            sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-            sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-    🧠 Step 4 — Install Network Plugin (Flannel)
-        kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-
-    🧠 Step 5 — Join Worker Nodes
-        After init, master gives a command like:
-
-            kubeadm join <master-ip>:6443 --token xxxx --discovery-token-ca-cert-hash sha256:xxxx
-
-        Run it on BOTH workers.
-
-    🧠 Step 6 — Verify Cluster
-        On master:
-            kubectl get nodes
-        Expected:
-            k8s-master     Ready
-            k8s-worker-1   Ready
-            k8s-worker-2   Ready
+    kubectl rollout status deployment/backend -n three-tier-app
     
-    🚀 Step 7 — Deploy Your 3-Tier App (same YAML)
-        Now copy your local Kubernetes manifests:
+    kubectl get pods -n three-tier-app
 
-            mysql/
-            backend/
-            frontend/
-            ingress/
-        
-        Run:
-            kubectl apply -f k8s/
+    kubectl get pods -n three-tier-app -w => live status
+
+    kubectl run curl-test -n three-tier-app --image=curlimages/curl:8.10.1 -it --rm --restart=Never -- sh
+
+        curl http://backend-service:5000/api/live
+        curl http://backend-service:5000/api/ready
+        curl http://backend-service:5000/api/health
+        curl http://backend-service:5000/api/books
+
+    ------------Now we will intentionally make one backend Pod unhealth------------
+    kubectl get pods -n three-tier-app -l app=backend
+    kubectl exec -it backend-6587597455-jfzzq -n three-tier-app -- sh
+
+
+9. Resource Requests, Limits, Metrics Server, and HPA Autoscaling
+    minikube addons enable metrics-server
+        💡metrics-server is an addon maintained by Kubernetes. For any concerns contact minikube on GitHub.
+        You can view the list of minikube maintainers at: https://github.com/kubernetes/minikube/blob/master/OWNERS
+        ▪ Using image registry.k8s.io/metrics-server/metrics-server:v0.8.1
+        🌟The 'metrics-server' addon is enabled
+
+    kubectl get pods -n kube-system
+        metrics-server-9d74bb658-fr82r     1/1     Running   0              91s
+
+    kubectl top nodes      
+        NAME       CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+        minikube   422m         5%       1892Mi          48%  
     
-    🌐 Step 8 — Expose Ingress on AWS
+    kubectl top pods -A       
+        NAMESPACE        NAME                                        CPU(cores)   MEMORY(bytes)   
+        ingress-nginx    ingress-nginx-controller-596f8778bc-8ssfz   3m           156Mi           
+        kube-system      coredns-7d764666f9-s474d                    4m           68Mi            
+        kube-system      etcd-minikube                               47m          80Mi            
+        kube-system      kube-apiserver-minikube                     80m          292Mi           
+        kube-system      kube-controller-manager-minikube            35m          112Mi           
+        kube-system      kube-proxy-wnbkx                            1m           51Mi            
+        kube-system      kube-scheduler-minikube                     14m          62Mi            
+        kube-system      metrics-server-9d74bb658-fr82r              6m           16Mi            
+        kube-system      storage-provisioner                         3m           20Mi            
+        three-tier-app   backend-6587597455-jfzzq                    1m           45Mi            
+        three-tier-app   frontend-86889bffd7-nxk8v                   0m           9Mi             
+        three-tier-app   mysql-5d6885f8f9-4s49d                      12m          441Mi 
 
-        Replace Minikube ingress with:
-            AWS Security Group rules
-            Node Public IP
-            Ingress Controller (NGINX)
 
-        Then access:
-            http://<EC2-PUBLIC-IP>
+        docker build -t backend-three-tier-app:v3 ./backend
+
+        minikube image load backend-three-tier-app:v3
+
+        minikube image ls | findstr three-tier-app
+
+        Update backend Deployment to v3
+
+        kubectl apply -f backend-deployment.yaml
+
+        kubectl rollout status deployment/backend -n three-tier-app
+
+        kubectl get pods -n three-tier-app
+
+        kubectl run curl-test -n three-tier-app --image=curlimages/curl:8.10.1 -it --rm --restart=Never -- sh
+
+        curl http://backend-service:5000/api/cpu
 
 
+        kubectl apply -f ./k8s/backend-hpa.yaml
+
+
+        kubectl get hpa -n three-tier-app
+        NAME          REFERENCE            TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+        backend-hpa   Deployment/backend   cpu: 4%/50%   2         6         2          115s
+
+        kubectl run load-generator -n three-tier-app --image=busybox:1.36 --restart=Never -it --rm -- /bin/sh -c "while true; do wget -q -O- http://backend-service:5000/api/cpu; done" => This continuously calls:http://backend-service:5000/api/cpu
+
+        kubectl get hpa -n three-tier-app  -w =>   TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+
+        kubectl top pods -n three-tier-app => cup/memory usage
+
+        kubectl delete pod load-generator -n three-tier-app
+
+        kubectl delete hpa backend-hpa -n three-tier-app
+
+
+10. Ingress, Domain Routing, and Real Website Access
+
+            Browser
+                ↓
+        fullstack.local
+                ↓
+        Ingress Controller
+                ↓
+        frontend-service
+                ↓
+        frontend-web Pod / Nginx
+                ↓
+        /api forwarded to backend-service
+                ↓
+        backend-api Pod
+
+    minikube addons enable ingress => Enable Ingress in minikube
+    kubectl get pods -n ingress-nginx => Then check the Ingress controller
+
+    ---------Change frontend Service from NodePort to ClusterIP---------
+     type: NodePort =>  type: ClusterIP  -> frontend-service
+
+     kubectl apply -f frontend-service.yaml
+     kubectl get svc -n three-tier-app
+
+     ------Create Ingress YAML--------------
+     kubectl apply -f frontend-ingress.yaml
+     kubectl get ingress -n three-tier-app
+
+
+     kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80
+     curl.exe -H "Host: fullstack.local" http://localhost:8080
+
+     curl.exe -H "Host: fullstack.local" http://localhost:8080/api/books
+
+     localhost:8080
+          ↓
+    Ingress controller
+          ↓
+    Ingress rule host fullstack.local
+          ↓
+    frontend-service
+          ↓
+    frontend Nginx
+          ↓
+    backend-service
+
+    -----------Add direct backend Ingress route---------------
+    change frontend ingress file
+    kubectl apply -f frontend-ingress.yaml
+    curl.exe -H "Host: fullstack.local" http://localhost:8080/api/health
+
+
+11. Volumes, PersistentVolume, PersistentVolumeClaim, and Saved Data
+    kubectl get storageclass => A StorageClass allows Kubernetes to dynamically create storage when a PVC requests it.
+
+    kubectl delete hpa backend-hpa -n three-tier-app
+
+    kubectl scale deployment backend --replicas=1 -n three-tier-app
+    kubectl get pods -n three-tier-app -l app=backend
+
+
+
+12. StatefulSet and Real Database Deployment
+
+    Browser
+        ↓
+    Ingress
+        ↓
+    frontend-service
+        ↓
+    frontend-web Pods
+        ↓
+    backend-service
+        ↓
+    backend-api Pods
+        ↓
+    postgres-service
+        ↓
+    postgres-db-0 StatefulSet Pod
+        ↓
+    PersistentVolumeClaim
+
+
+    A StatefulSet creates predictable Pods:
+        postgres-db-0
+        postgres-db-1
+        postgres-db-2
+    
+    Each Pod can have its own PVC:
+        postgres-data-postgres-db-0
+        postgres-data-postgres-db-1
+        postgres-data-postgres-db-2
+
+
+13. Helm from scratch using your full-stack project
+    Helm is used to package Kubernetes YAML files into reusable applications called Charts. 
+    Instead of applying many YAML files one by one, Helm lets you install, upgrade, rollback, and uninstall an application as one release. 
+    Helm’s official docs describe Charts as packages that help define, install, and upgrade Kubernetes applications.
+
+    -------Why do we need Helm?----------
+
+        Until now, your app has many files:
+
+            namespace.yaml
+            backend-deployment.yaml
+            backend-service.yaml
+            frontend-deployment.yaml
+            frontend-service.yaml
+            frontend-ingress.yaml
+            backend-pvc.yaml
+            postgres-secret.yaml
+            postgres-service.yaml
+            postgres-statefulset.yaml
+            backend-db-config.yaml
+            backend-db-secret.yaml
+
+
+
+    helm version
+
+    helm create fullstack-chart
+
+    helm template fullstack-app ./fullstack-chart => Before installing, check whether Helm can render valid YAML.
+
+    helm lint ./fullstack-chart
+
+    helm install fullstack-app ./fullstack-chart
+
+    helm list -A
+
+    helm status fullstack-app
+
+    helm upgrade fullstack-app ./fullstack-chart
+
+    helm upgrade fullstack-app ./fullstack-chart --set frontend.replicas=3
+
+    helm upgrade fullstack-app ./fullstack-chart -f values-dev.yaml
+
+    helm history fullstack-app
+
+    helm rollback fullstack-app 1
+
+    helm uninstall fullstack-app
+
+
+
+
+
+
+
+
+
+
+
+
+
+   --------------------- Our Kubernetes architecture------------------------------
+   Browser
+  ↓
+Ingress: library.local
+  ↓
+Frontend Service
+  ↓
+Frontend React/Nginx Pod
+  ↓
+/api proxy
+  ↓
+Backend Service
+  ↓
+Backend Express Pod
+  ↓
+MySQL Service
+  ↓
+MySQL StatefulSet
+  ↓
+PersistentVolumeClaim
