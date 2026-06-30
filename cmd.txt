@@ -584,3 +584,10 @@ helm upgrade library-dev ./helm/library-chart -f ./helm/library-chart/values-dev
 kubectl get pods -n library-dev
 
 helm history library-dev
+
+
+
+---------Update backend Deployment Helm template
+
+docker build -t rifkhan6526/library-backend:v2 ./backend
+docker push rifkhan6526/library-backend:v2

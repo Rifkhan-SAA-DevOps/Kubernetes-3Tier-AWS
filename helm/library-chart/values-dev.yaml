@@ -2,14 +2,16 @@ namespace:
   name: library-dev
 
 backend:
-  replicas: 1
   image:
-    tag: v1
+    repository: rifkhan6526/library-backend
+    tag: latest
+    pullPolicy: Always
 
 frontend:
-  replicas: 1
   image:
-    tag: v1
+    repository: rifkhan6526/library-frontend
+    tag: latest
+    pullPolicy: Always
 
 mysql:
   storage:

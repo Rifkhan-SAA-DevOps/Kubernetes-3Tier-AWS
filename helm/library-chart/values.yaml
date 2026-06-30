@@ -62,7 +62,23 @@ backend:
 
   probes:
     enabled: true
-    path: /api/health
+    startup:   # startupProbe checks whether backend started
+      path: /api/live
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      failureThreshold: 12
+
+    readiness: # readinessProbe checks whether backend can serve traffic and connect to MySQL
+      path: /api/ready
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 3
+
+    liveness: # livenessProbe checks whether backend process is alive
+      path: /api/live
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      failureThreshold: 3
 
   resources:
     requests:

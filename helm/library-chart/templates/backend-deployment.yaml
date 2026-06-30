@@ -82,27 +82,27 @@ spec:
 {{- if .Values.backend.probes.enabled }}
           startupProbe:
             httpGet:
-              path: {{ .Values.backend.probes.path }}
+              path: {{ .Values.backend.probes.startup.path }}
               port: {{ .Values.backend.service.targetPort }}
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            failureThreshold: 12
+            initialDelaySeconds: {{ .Values.backend.probes.startup.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.backend.probes.startup.failureThreshold }}
 
           readinessProbe:
             httpGet:
-              path: {{ .Values.backend.probes.path }}
+              path: {{ .Values.backend.probes.readiness.path }}
               port: {{ .Values.backend.service.targetPort }}
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            failureThreshold: 3
+            initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.backend.probes.readiness.failureThreshold }}
 
           livenessProbe:
             httpGet:
-              path: {{ .Values.backend.probes.path }}
+              path: {{ .Values.backend.probes.liveness.path }}
               port: {{ .Values.backend.service.targetPort }}
-            initialDelaySeconds: 30
-            periodSeconds: 20
-            failureThreshold: 3
+            initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.backend.probes.liveness.failureThreshold }}
 {{- end }}
 
           resources:
